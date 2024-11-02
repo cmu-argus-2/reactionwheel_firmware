@@ -21,7 +21,10 @@ void setup() {
   // power supply voltage [V]
   driver.voltage_power_supply = 10;
   // Max DC voltage allowed. Defaults to voltage_power_supply
-  driver.voltage_limit = 5;
+  // 2.5" Hard Drive: Each phase's windings == 4 Ohms, and probably shouldn't
+  // have any more than 500 mA == 0.5 A through them at any given time.
+  // Therefore, set maximum voltage to 2 to limit current to 0.5 A.
+  driver.voltage_limit = 2;
 
   // driver init
   if (!driver.init()){
