@@ -2,9 +2,23 @@
 
 #include <SimpleFOC.h>
 
+// BLDC motor instance.
+//  BLDCMotor(int pp, (optional R, KV))
+//  - pp  - pole pair number
+//  - R   - phase resistance value - optional
+//  - KV  - motor KV rating [rpm/V] - optional
+BLDCMotor motor = BLDCMotor(1, 4.03);
 // Setup 3-pin PWM BLDC driver. Instantiating this class will initialize all the
 // necessary PWM timer/counters for the current board type.
 BLDCDriver3PWM driver = BLDCDriver3PWM(11, 10, 9, 8);
+
+//target variable
+float target_velocity = 6.28;
+
+// instantiate the commander
+Commander command = Commander(Serial);
+void doTarget(char* cmd) { command.scalar(&target_velocity, cmd); }
+void doLimit(char* cmd) { command.scalar(&motor.voltage_limit, cmd); }
 
 void setup() {
 
@@ -31,20 +45,60 @@ void setup() {
     Serial.println("Driver init failed!");
     return;
   }
-  else {
-    Serial.println("Driver successfully initialized!");
-  }
+  Serial.println("Driver successfully initialized!");
 
-  // enable driver
-  driver.enable(); // This should bring pin 8 high == connected to the DRV8313 enable pin.
-  Serial.println("Driver ready!");
+  // link the motor and the driver
+  motor.linkDriver(&driver);
+
+  // Adding motor constraints.
+  // Set the resistance of each motor phase. Note that this is the resistance
+  // Of an invidual phase to the common pin. If you're measuring from one phase
+  // to another in wye config, divide that resistance by two.
+  motor.phase_resistance = 2.03;
+  // limit the voltage to be set to the motor
+  // start very low for high resistance motors
+  // current = voltage / resistance, so try to be well under 1Amp
+  motor.current_limit = 0.3;
+
+  // open loop control config
+  motor.controller = MotionControlType::velocity_openloop;
+
+  // init motor hardware
+  if(!motor.init()){
+    Serial.println("Motor init failed!");
+    return;
+  }
+  Serial.println("Motor successfully initialized!");
+
+  // set the target velocity [rad/s]
+  // motor.target = 6.28; // one rotation per second
+
+  // add target command T
+  command.add('T', doTarget, "target velocity");
+  command.add('L', doLimit, "voltage limit");
+
+  // // enable driver
+  // driver.enable(); // This should bring pin 8 high == connected to the DRV8313 enable pin.
+  // Serial.println("Driver ready!");
+  // _delay(1000);
+
+  Serial.println("Motor ready!");
+  Serial.println("Set target velocity [rad/s]");
   _delay(1000);
 }
 
 void loop() {
-    // setting pwm
-    // phase A: 3V
-    // phase B: 4V
-    // phase C: 5V
-    driver.setPwm(3,4,5);
+    // // setting pwm
+    // // phase A: 3V
+    // // phase B: 4V
+    // // phase C: 5V
+    // driver.setPwm(3,4,5);
+
+    // open loop velocity movement
+    // using motor.voltage_limit and motor.velocity_limit
+    // to turn the motor "backwards", just set a negative target_velocity
+    motor.move(target_velocity);
+
+    // user communication
+    command.run();
 }
