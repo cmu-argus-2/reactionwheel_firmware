@@ -7,7 +7,7 @@
 //  - pp  - pole pair number
 //  - R   - phase resistance value - optional
 //  - KV  - motor KV rating [rpm/V] - optional
-BLDCMotor motor = BLDCMotor(1, 2.03);
+BLDCMotor motor = BLDCMotor(6, 2.03);
 // Setup 3-pin PWM BLDC driver. Instantiating this class will initialize all the
 // necessary PWM timer/counters for the current board type.
 BLDCDriver3PWM driver = BLDCDriver3PWM(11, 10, 9, 8);
