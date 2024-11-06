@@ -12,8 +12,15 @@ BLDCMotor motor = BLDCMotor(6, 2.03);
 // necessary PWM timer/counters for the current board type.
 BLDCDriver3PWM driver = BLDCDriver3PWM(11, 10, 9, 8);
 
-//target variable
-// float target_velocity = 6.28;
+// MagneticSensorI2C(uint8_t _chip_address, float _cpr, uint8_t _angle_register_msb)
+//  chip_address         - I2C chip address
+//  bit_resolution       - resolution of the sensor. 12 for AS5600.
+//  angle_register_msb   - angle read register msb. 0x0E for AS5600.
+//  bits_used_msb        - number of used bits in msb register
+// MagneticSensorI2C sensor = MagneticSensorI2C(0x36, 12, 0x0E, 4);
+//  instance of AS5600 sensor (provided in
+//  https://docs.simplefoc.com/magnetic_sensor_i2c#quick-configuration-for-common-sensors)
+MagneticSensorI2C sensor = MagneticSensorI2C(AS5600_I2C);
 
 // instantiate the commander
 Commander command = Commander(Serial);
@@ -48,8 +55,16 @@ void setup() {
   }
   Serial.println("Driver successfully initialized!");
 
+  // configure i2C
+  Wire.setClock(400000);
+  // initialise magnetic sensor hardware
+  sensor.init();
+  Serial.println("Sensor ready");
+
   // link the motor and the driver
   motor.linkDriver(&driver);
+  // link the motor and the sensor.
+  motor.linkSensor(&sensor);
 
   // Adding motor constraints.
   // Set the resistance of each motor phase. Note that this is the resistance
@@ -66,7 +81,7 @@ void setup() {
   // Driver max voltage is also an upper bound to watch.
 
   // open loop control config
-  motor.controller = MotionControlType::velocity_openloop;
+  motor.controller = MotionControlType::velocity;
 
   // init motor hardware
   if(!motor.init()){
@@ -75,8 +90,14 @@ void setup() {
   }
   Serial.println("Motor successfully initialized!");
 
+  // TODO: Initialize FOC?
+  if (!motor.initFOC()) {
+    Serial.println("Motor FOC init failed!");
+  }
+  Serial.println("Motor FOC initialized successfully!");
+
   // set the target velocity [rad/s]
-  motor.target = 100; // one rotation per second
+  motor.target = 12; // Approx two rotations per second
 
   // add target command T
   command.add('T', doTarget, "target velocity");
@@ -104,6 +125,7 @@ void loop() {
     // using motor.voltage_limit and motor.velocity_limit
     // to turn the motor "backwards", just set a negative target_velocity
     // motor.move(target_velocity);
+    motor.loopFOC();
     motor.move();
 
     // user communication
