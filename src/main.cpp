@@ -102,7 +102,7 @@ void setup() {
   Serial.println("Motor FOC initialized successfully!");
 
   // set the target velocity [rad/s]
-  motor.target = 1; // Closed loop, this is a voltage
+  motor.target = 0.5; // Closed loop, this is a voltage
 
   // add target command T
   command.add('T', doTarget, "target");
