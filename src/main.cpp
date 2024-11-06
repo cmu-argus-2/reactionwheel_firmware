@@ -19,6 +19,7 @@ BLDCDriver3PWM driver = BLDCDriver3PWM(11, 10, 9, 8);
 Commander command = Commander(Serial);
 void doTarget(char* cmd) { command.scalar(&motor.target, cmd); }
 void doLimit(char* cmd) { command.scalar(&motor.voltage_limit, cmd); }
+void onTarget(char* cmd){ command.target(&motor,cmd); }
 
 void setup() {
 
@@ -76,6 +77,7 @@ void setup() {
   // add target command T
   command.add('T', doTarget, "target velocity");
   command.add('L', doLimit, "voltage limit");
+  command.add('M',onTarget,"target setting");
 
   // // enable driver
   // driver.enable(); // This should bring pin 8 high == connected to the DRV8313 enable pin.
