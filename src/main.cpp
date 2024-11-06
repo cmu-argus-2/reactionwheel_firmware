@@ -60,6 +60,10 @@ void setup() {
   // start very low for high resistance motors
   // current = voltage / resistance, so try to be well under 1Amp
   motor.current_limit = 0.6;
+  // NOTE: I think adjusting this current limit is ultimately what will limit
+  // our top speed--as if we can't torque enough at speed, then we can't
+  // accelerate. Back-EMF will also play a role, but just keep this in mind.
+  // Driver max voltage is also an upper bound to watch.
 
   // open loop control config
   motor.controller = MotionControlType::velocity_openloop;
