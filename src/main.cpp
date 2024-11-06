@@ -7,17 +7,17 @@
 //  - pp  - pole pair number
 //  - R   - phase resistance value - optional
 //  - KV  - motor KV rating [rpm/V] - optional
-BLDCMotor motor = BLDCMotor(1, 4.03);
+BLDCMotor motor = BLDCMotor(1, 2.03);
 // Setup 3-pin PWM BLDC driver. Instantiating this class will initialize all the
 // necessary PWM timer/counters for the current board type.
 BLDCDriver3PWM driver = BLDCDriver3PWM(11, 10, 9, 8);
 
 //target variable
-float target_velocity = 6.28;
+// float target_velocity = 6.28;
 
 // instantiate the commander
 Commander command = Commander(Serial);
-void doTarget(char* cmd) { command.scalar(&target_velocity, cmd); }
+void doTarget(char* cmd) { command.scalar(&motor.target, cmd); }
 void doLimit(char* cmd) { command.scalar(&motor.voltage_limit, cmd); }
 
 void setup() {
@@ -31,14 +31,14 @@ void setup() {
   // pwm frequency to be used [Hz]
   // for atmega328 fixed to 32kHz
   // esp32/stm32/teensy configurable
-  driver.pwm_frequency = 32000;
+  driver.pwm_frequency = 32000; // originally 32 kHz, 4 kHz looks a LITTLE better / less cogging.
   // power supply voltage [V]
-  driver.voltage_power_supply = 10;
+  driver.voltage_power_supply = 8;
   // Max DC voltage allowed. Defaults to voltage_power_supply
   // 2.5" Hard Drive: Each phase's windings == 4 Ohms, and probably shouldn't
   // have any more than 500 mA == 0.5 A through them at any given time.
   // Therefore, set maximum voltage to 2 to limit current to 0.5 A.
-  driver.voltage_limit = 2;
+  driver.voltage_limit = 2.5;
 
   // driver init
   if (!driver.init()){
@@ -58,7 +58,7 @@ void setup() {
   // limit the voltage to be set to the motor
   // start very low for high resistance motors
   // current = voltage / resistance, so try to be well under 1Amp
-  motor.current_limit = 0.3;
+  motor.current_limit = 0.6;
 
   // open loop control config
   motor.controller = MotionControlType::velocity_openloop;
@@ -71,7 +71,7 @@ void setup() {
   Serial.println("Motor successfully initialized!");
 
   // set the target velocity [rad/s]
-  // motor.target = 6.28; // one rotation per second
+  motor.target = 100; // one rotation per second
 
   // add target command T
   command.add('T', doTarget, "target velocity");
@@ -97,7 +97,8 @@ void loop() {
     // open loop velocity movement
     // using motor.voltage_limit and motor.velocity_limit
     // to turn the motor "backwards", just set a negative target_velocity
-    motor.move(target_velocity);
+    // motor.move(target_velocity);
+    motor.move();
 
     // user communication
     command.run();
