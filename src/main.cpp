@@ -81,7 +81,12 @@ void setup() {
   // Driver max voltage is also an upper bound to watch.
 
   // open loop control config
-  motor.controller = MotionControlType::velocity;
+  // motor.controller = MotionControlType::velocity;
+
+  // Closed-loop control config
+  motor.torque_controller = TorqueControlType::voltage;
+  motor.controller = MotionControlType::torque;
+  motor.voltage_sensor_align = 0.6;
 
   // init motor hardware
   if(!motor.init()){
@@ -97,10 +102,10 @@ void setup() {
   Serial.println("Motor FOC initialized successfully!");
 
   // set the target velocity [rad/s]
-  motor.target = 12; // Approx two rotations per second
+  motor.target = 1; // Closed loop, this is a voltage
 
   // add target command T
-  command.add('T', doTarget, "target velocity");
+  command.add('T', doTarget, "target");
   command.add('L', doLimit, "voltage limit");
   command.add('M',onTarget,"target setting");
 
