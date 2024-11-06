@@ -85,7 +85,9 @@ void setup() {
 
   // Closed-loop control config
   motor.torque_controller = TorqueControlType::voltage;
-  motor.controller = MotionControlType::torque;
+  // motor.controller = MotionControlType::torque;
+  // motor.controller = MotionControlType::angle;
+  motor.controller = MotionControlType::velocity;
   motor.voltage_sensor_align = 0.6;
 
   // init motor hardware
@@ -102,7 +104,7 @@ void setup() {
   Serial.println("Motor FOC initialized successfully!");
 
   // set the target velocity [rad/s]
-  motor.target = 0.5; // Closed loop, this is a voltage
+  motor.target = 6.28; // Closed loop, this is a voltage
 
   // add target command T
   command.add('T', doTarget, "target");
@@ -132,6 +134,8 @@ void loop() {
     // motor.move(target_velocity);
     motor.loopFOC();
     motor.move();
+
+    // Serial.println(sensor.getVelocity());
 
     // user communication
     command.run();
