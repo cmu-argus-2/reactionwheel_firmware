@@ -10,17 +10,14 @@
 BLDCMotor motor = BLDCMotor(6, 2.03);
 // Setup 3-pin PWM BLDC driver. Instantiating this class will initialize all the
 // necessary PWM timer/counters for the current board type.
-BLDCDriver3PWM driver = BLDCDriver3PWM(11, 10, 9, 8);
+// NOTE: Had to move to different PWM pins to make room for the SPI encoder.
+BLDCDriver3PWM driver = BLDCDriver3PWM(9, 6, 5, 4);
 
-// MagneticSensorI2C(uint8_t _chip_address, float _cpr, uint8_t _angle_register_msb)
-//  chip_address         - I2C chip address
-//  bit_resolution       - resolution of the sensor. 12 for AS5600.
-//  angle_register_msb   - angle read register msb. 0x0E for AS5600.
-//  bits_used_msb        - number of used bits in msb register
-// MagneticSensorI2C sensor = MagneticSensorI2C(0x36, 12, 0x0E, 4);
-//  instance of AS5600 sensor (provided in
-//  https://docs.simplefoc.com/magnetic_sensor_i2c#quick-configuration-for-common-sensors)
-MagneticSensorI2C sensor = MagneticSensorI2C(AS5600_I2C);
+// MagneticSensorSPI(int cs, float _cpr, int _angle_register)
+//  cs              - SPI chip select pin 
+//  bit_resolution - magnetic sensor resolution
+//  angle_register  - (optional) angle read register - default 0x3FFF
+MagneticSensorSPI sensor = MagneticSensorSPI(10, 14, 0x3FFF);
 
 // instantiate the commander
 Commander command = Commander(Serial);
@@ -58,6 +55,8 @@ void setup() {
   // configure i2C
   Wire.setClock(400000);
   // initialise magnetic sensor hardware
+  // sensor.spi_mode = SPI_MODE0; // spi mode - OPTIONAL
+  // sensor.clock_speed = 500000; // spi clock frequency - OPTIONAL
   sensor.init();
   Serial.println("Sensor ready");
 
