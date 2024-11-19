@@ -109,6 +109,9 @@ void setup() {
   command.add('T', doTarget, "target");
   command.add('L', doLimit, "voltage limit");
   command.add('M',onTarget,"target setting");
+  // // tell the motor to use the monitoring
+  // motor.useMonitoring(Serial);
+  // motor.monitor_downsample = 0; // disable monitor at first - optional
 
   // // enable driver
   // driver.enable(); // This should bring pin 8 high == connected to the DRV8313 enable pin.
@@ -136,6 +139,8 @@ void loop() {
 
     // Serial.println(sensor.getVelocity());
 
-    // user communication
+    // // real-time monitoring calls
+    // motor.monitor();
+    // real-time commander calls
     command.run();
 }
