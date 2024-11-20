@@ -89,6 +89,8 @@ void setup() {
   motor.controller = MotionControlType::velocity;
   motor.voltage_sensor_align = 0.6;
 
+  motor.foc_modulation = FOCModulationType::SinePWM;
+
   // init motor hardware
   if(!motor.init()){
     Serial.println("Motor init failed!");
@@ -111,8 +113,10 @@ void setup() {
   command.add('L', doLimit, "voltage limit");
   command.add('M',onTarget,"target setting");
   // // tell the motor to use the monitoring
-  // motor.useMonitoring(Serial);
-  // motor.monitor_downsample = 0; // disable monitor at first - optional
+  motor.useMonitoring(Serial);
+  // Configure which values you want to be monitored using a bitmask.
+  motor.monitor_variables = _MON_TARGET | _MON_VOLT_Q  | _MON_VOLT_D | _MON_CURR_Q  | _MON_CURR_D  | _MON_VEL | _MON_ANGLE; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE
+  motor.monitor_downsample = 100; // disable monitor at first - optional
 
   // // enable driver
   // driver.enable(); // This should bring pin 8 high == connected to the DRV8313 enable pin.
@@ -141,7 +145,7 @@ void loop() {
     // Serial.println(sensor.getVelocity());
 
     // // real-time monitoring calls
-    // motor.monitor();
+    motor.monitor();
     // real-time commander calls
     command.run();
 }
