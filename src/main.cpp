@@ -11,7 +11,7 @@ BLDCMotor motor = BLDCMotor(6, 2.03);
 // Setup 3-pin PWM BLDC driver. Instantiating this class will initialize all the
 // necessary PWM timer/counters for the current board type.
 // NOTE: Had to move to different PWM pins to make room for the SPI encoder.
-BLDCDriver3PWM driver = BLDCDriver3PWM(9, 6, 5, 4);
+BLDCDriver3PWM driver = BLDCDriver3PWM(9, 5, 4, 6);
 
 // MagneticSensorSPI(int cs, float _cpr, int _angle_register)
 //  cs              - SPI chip select pin 
@@ -99,6 +99,7 @@ void setup() {
   // TODO: Initialize FOC?
   if (!motor.initFOC()) {
     Serial.println("Motor FOC init failed!");
+    return;
   }
   Serial.println("Motor FOC initialized successfully!");
 
