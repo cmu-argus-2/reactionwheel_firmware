@@ -1,6 +1,7 @@
 # Full disclosure: Quick script written by ChatGPT.
 
 import serial
+import csv
 
 def read_serial_data(port, baudrate):
     """
@@ -15,6 +16,9 @@ def read_serial_data(port, baudrate):
         with serial.Serial(port, baudrate, timeout=1) as ser:
             print(f"Connected to {port} at {baudrate} baud.")
 
+            # Create a collection of lines. Could make this a queue and
+            # asynchronously write to disk in another thread later.
+            measurements = []
             while True:
                 # Read a line from the serial port
                 line = ser.readline().decode('utf-8').strip()
@@ -27,7 +31,8 @@ def read_serial_data(port, baudrate):
                         # Ensure the line contains exactly 7 values
                         if len(values) == 7:
                             print(f"Received: {values}")
-                            print(f"Values: {values}")
+                            # print(f"Values: {values}")
+                            measurements.append(values)
                         else:
                             print(f"Invalid line (wrong number of values): {line}")
                     except ValueError:
@@ -37,6 +42,10 @@ def read_serial_data(port, baudrate):
         print(f"Serial error: {e}")
     except KeyboardInterrupt:
         print("Program terminated.")
+        # Before exiting, write the collected values to a csv file.
+        with open("hdd-measurements.csv", 'w', newline='') as csvfile:
+            measurement_writer = csv.writer(csvfile)
+            measurement_writer.writerows(measurements)
 
 # Replace with your serial port and baud rate
 if __name__ == "__main__":
