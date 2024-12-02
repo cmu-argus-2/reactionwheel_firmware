@@ -2,6 +2,48 @@
 
 import serial
 import csv
+from typing import List
+
+# TODO: Could create two threads:
+# One spins at a provided rate to send commands (I.e., how long each sweep value
+# should last for), and then the other spins at another rate (some sampling
+# rate, could just be as fast as possible) to read data from the controller.
+
+
+# def send_sweep_commands(sweep_command_values: List[int],
+#                         command_duration: int)
+
+def command_angular_speed_sweep(serial_connection:  serial.Serial,
+                                start_speed_rad_s: int,
+                                end_speed_rad_s: int,
+                                speed_step_rad_s: int,
+                                step_duration_ms: int) -> None:
+  """Commands a sequence of angular speeds to the provided serial connection
+  separated by step_duration milliseconds.
+
+  Args:
+      serial_connection (serial.Serial): Serial connection each commanded speed
+      will be sent to.
+      start_speed_rad_s (int): The first commanded angular speed.
+      end_speed_rad_s (int): The angular speed that will be commanded last.
+      speed_step_rad_s (int): The change in angular speed between steps.
+      step_duration_ms (int): How long (in milliseconds) each angular speed
+      between start and end the reaction wheel will be commanded to run at.
+  """
+
+  # TODO: First, generate a range of values from the start and end speed. Add
+  # some quick checks to make sure the values provided are reasonable.
+  # TODO: Next, create a for loop to loop through all the values in the range
+  # that we want to command.
+  for speed in range(start_speed_rad_s, end_speed_rad_s, speed_step_rad_s):
+    serial_connection.write(f"T: {speed}")
+
+  print(f"Angular speed sweep thread completed!")
+
+  # TODO: Consider making a shared variable between the send and receive threads
+  # so that we can record what speed is commanded versus the actual measured
+  # angular speed.
+
 
 def read_serial_data(port, baudrate):
     """
@@ -16,17 +58,24 @@ def read_serial_data(port, baudrate):
         with serial.Serial(port, baudrate, timeout=1) as ser:
             print(f"Connected to {port} at {baudrate} baud.")
 
+            # TODO: Will use the serial connection we create for both sending
+            # out the commanded sweep values and receiving messages.
+
             # Create a collection of lines. Could make this a queue and
             # asynchronously write to disk in another thread later.
             measurements = []
             while True:
                 # Read a line from the serial port
+                # TODO: Determine if readline is blocking or not.
                 line = ser.readline().decode('utf-8').strip()
 
                 if line:
                     try:
                         # Parse the line into a list of floating-point numbers
                         values = [float(value) for value in line.split()]
+
+                        # TODO: write a function to filter out values we don't
+                        # care about / should reject.
 
                         # Ensure the line contains exactly 7 values
                         if len(values) == 7:
