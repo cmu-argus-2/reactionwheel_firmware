@@ -2,6 +2,7 @@
 
 import serial
 import csv
+from time import sleep
 from typing import List
 
 # TODO: Could create two threads:
@@ -9,9 +10,14 @@ from typing import List
 # should last for), and then the other spins at another rate (some sampling
 # rate, could just be as fast as possible) to read data from the controller.
 
+# TODO: Consider making a shared variable between the send and receive threads
+# so that we can record what speed is commanded versus the actual measured
+# angular speed.
 
-# def send_sweep_commands(sweep_command_values: List[int],
-#                         command_duration: int)
+# TODO: Consider just creating a class that these functions both belong to, and
+# then just used an instance variable to share that data. Can instantiate this
+# object in the main below, add checks outside for parsing all those parameters,
+# etc.
 
 def command_angular_speed_sweep(serial_connection:  serial.Serial,
                                 start_speed_rad_s: int,
@@ -33,16 +39,16 @@ def command_angular_speed_sweep(serial_connection:  serial.Serial,
 
   # TODO: First, generate a range of values from the start and end speed. Add
   # some quick checks to make sure the values provided are reasonable.
+  MINIMUM_STEP_DURATION_MS = 1
+  assert(step_duration_ms >= MINIMUM_STEP_DURATION_MS)
+  step_duration_s = step_duration_ms / 1000
   # TODO: Next, create a for loop to loop through all the values in the range
   # that we want to command.
   for speed in range(start_speed_rad_s, end_speed_rad_s, speed_step_rad_s):
     serial_connection.write(f"T: {speed}")
+    sleep(step_duration_s)
 
   print(f"Angular speed sweep thread completed!")
-
-  # TODO: Consider making a shared variable between the send and receive threads
-  # so that we can record what speed is commanded versus the actual measured
-  # angular speed.
 
 
 def read_serial_data(port, baudrate):
