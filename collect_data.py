@@ -11,6 +11,7 @@ from time import sleep
 from typing import List
 import threading
 import numpy as np
+from tqdm import tqdm
 
 # TODO: Could create two threads:
 # One spins at a provided rate to send commands (I.e., how long each sweep value
@@ -34,32 +35,34 @@ def command_angular_speed_sweep(serial_connection:  serial.Serial,
                                 end_speed_rad_s: int,
                                 speed_step_rad_s: int,
                                 step_duration_ms: int) -> None:
-  """Commands a sequence of angular speeds to the provided serial connection
-  separated by step_duration milliseconds.
+    """Commands a sequence of angular speeds to the provided serial connection
+        separated by step_duration milliseconds.
 
-  Args:
-      serial_connection (serial.Serial): Serial connection each commanded speed
-      will be sent to.
-      start_speed_rad_s (int): The first commanded angular speed.
-      end_speed_rad_s (int): The angular speed that will be commanded last.
-      speed_step_rad_s (int): The change in angular speed between steps.
-      step_duration_ms (int): How long (in milliseconds) each angular speed
-      between start and end the reaction wheel will be commanded to run at.
-  """
+    Args:
+        serial_connection (serial.Serial): Serial connection each commanded speed
+        will be sent to.
+        start_speed_rad_s (int): The first commanded angular speed.
+        end_speed_rad_s (int): The angular speed that will be commanded last.
+        speed_step_rad_s (int): The change in angular speed between steps.
+        step_duration_ms (int): How long (in milliseconds) each angular speed
+        between start and end the reaction wheel will be commanded to run at.
+    """
 
-  # TODO: First, generate a range of values from the start and end speed. Add
-  # some quick checks to make sure the values provided are reasonable.
-  MINIMUM_STEP_DURATION_MS = 1
-  assert(step_duration_ms >= MINIMUM_STEP_DURATION_MS)
-  step_duration_s = step_duration_ms / 1000
-  # TODO: Next, create a for loop to loop through all the values in the range
-  # that we want to command.
-  for speed in np.arange(start_speed_rad_s, end_speed_rad_s, speed_step_rad_s):
-    print(f"Commanding speed: {speed}")
-    serial_connection.write(f"T: {speed}".encode("utf-8"))
-    sleep(step_duration_s)
+    # TODO: First, generate a range of values from the start and end speed. Add
+    # some quick checks to make sure the values provided are reasonable.
+    MINIMUM_STEP_DURATION_MS = 1
+    assert(step_duration_ms >= MINIMUM_STEP_DURATION_MS)
+    step_duration_s = step_duration_ms / 1000
+    # TODO: Next, create a for loop to loop through all the values in the range
+    # that we want to command.
+    # Rewrite to use tqdm for progress bar.
 
-  print(f"Angular speed sweep thread completed!")
+    for speed in tqdm(np.arange(start_speed_rad_s, end_speed_rad_s, speed_step_rad_s)):
+        tqdm.write(f"Commanding speed: {speed}")
+        serial_connection.write(f"T{speed}\n".encode("utf-8"))
+        sleep(step_duration_s)
+
+    print(f"Angular speed sweep thread completed!")
 
 def monitor_reaction_wheel(serial_connection: serial.Serial,
                            line_filter_regex: str,
@@ -80,11 +83,11 @@ def monitor_reaction_wheel(serial_connection: serial.Serial,
         # First, check if the commander has finished. If so, no need to keep
         # reading.
         if sentinel.is_set():
+            print(f"Monitor thread received sentinel. Exiting.")
             break
 
         # Read a line from the serial port
         line = serial_connection.readline().decode('utf-8').strip()
-
         if line:
             try:
                 # Parse the line into a list of floating-point numbers
@@ -107,12 +110,12 @@ def monitor_reaction_wheel(serial_connection: serial.Serial,
                     # print(f"Received: {values}")
                     collected_measurements.append(values)
                 else:
-                    print(f"Invalid line (wrong number of values): {line}")
+                    # print(f"Invalid line (wrong number of values): {line}")
+                    pass
             except ValueError:
                 print(f"Invalid line (could not parse floats): {line}")
 
 
-# Replace with your serial port and baud rate
 if __name__ == "__main__":
 
     # Use argparse to set up a quick CLI for grabbing parameters for our
@@ -122,8 +125,8 @@ if __name__ == "__main__":
     parser.add_argument("--baudrate", type=int, help="The baud rate for the serial connection.", default=115200)
     parser.add_argument("--start_speed_rad_s", type=int, help="The first commanded angular speed in rad/s.", default=6.28)
     parser.add_argument("--end_speed_rad_s", type=int, help="The last commanded angular speed in rad/s.", default=100)
-    parser.add_argument("--speed_step_rad_s", type=int, help="The change in angular speed between steps in rad/s.", default=10)
-    parser.add_argument("--step_duration_ms", type=int, help="The duration of each step in milliseconds.", default=1000)
+    parser.add_argument("--speed_step_rad_s", type=int, help="The change in angular speed between steps in rad/s.", default=5)
+    parser.add_argument("--step_duration_ms", type=int, help="The duration of each step in milliseconds.", default=2000)
     parser.add_argument("--output_directory", type=str, help="The directory to save the output files to.", default=".")
     args = parser.parse_args()
 
@@ -139,11 +142,18 @@ if __name__ == "__main__":
     # Define the default regular expression to filter out lines we don't care
     # about. By default, we mainly want to reject lines that contain "Target,"
     # as these are responses to the commands we send.
-    line_filter_regex = ".*Target.*"
+    line_filter_regex = ".*T.*"
 
     # Create the measurements list to store the data we read from the serial
     # connection.
     collected_measurements = []
+
+    # Create a sentinel variable to tell the monitor thread to stop reading
+    # from the serial port once the commander thread has finished. The main
+    # thread will set this and the monitor thread will check it at each
+    # iteration to figure out if it's time to stop. Not threadsafe but not
+    # critical. threading.Event might be a better choice.
+    commander_done = threading.Event()
 
     # TODO: Open the specified serial port with the specified baud rate.
     try:
@@ -154,13 +164,6 @@ if __name__ == "__main__":
             commander_thread = threading.Thread(target=command_angular_speed_sweep,
                                                 args=(ser, args.start_speed_rad_s, args.end_speed_rad_s,
                                                     args.speed_step_rad_s, args.step_duration_ms))
-
-            # Create a sentinel variable to tell the monitor thread to stop reading
-            # from the serial port once the commander thread has finished. The main
-            # thread will set this and the monitor thread will check it at each
-            # iteration to figure out if it's time to stop. Not threadsafe but not
-            # critical. threading.Event might be a better choice.
-            commander_done = threading.Event()
 
             # Create a monitor thread.
             monitor_thread = threading.Thread(target=monitor_reaction_wheel,
@@ -181,12 +184,15 @@ if __name__ == "__main__":
 
     except serial.SerialException as e:
         print(f"Serial error: {e}")
+        commander_done.set()
         exit(1)
     except KeyboardInterrupt:
         print("Program terminated.")
+        commander_done.set()
         exit(1)
     except Exception as e:
         print(f"An error occurred: {e}")
+        commander_done.set()
         exit(1)
 
     # Next, write the collected measurements to a CSV file.
