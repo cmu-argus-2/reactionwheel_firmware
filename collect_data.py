@@ -14,6 +14,8 @@ import numpy as np
 from tqdm import tqdm
 import pandas as pd
 
+from plot_data import plot_measurements
+
 # TODO: Could create two threads:
 # One spins at a provided rate to send commands (I.e., how long each sweep value
 # should last for), and then the other spins at another rate (some sampling
@@ -202,13 +204,13 @@ if __name__ == "__main__":
     # Define a header row for the CSV file.
     header = ["_MON_TARGET", "_MON_VOLT_Q", "_MON_VOLT_D", "_MON_CURR_Q", "_MON_CURR_D", "_MON_VEL", "_MON_ANGLE"]
     # Create a pandas dataframe from the collected measurements.
-    df = pd.DataFrame(collected_measurements, columns=header)
+    measurements_df = pd.DataFrame(collected_measurements, columns=header)
 
     # Save the dataframe to a CSV file.
     if collected_measurements:
         output_file = output_directory / "reaction_wheel_measurements.csv"
         try:
-            df.to_csv(output_file, index=False)
+            measurements_df.to_csv(output_file, index=False)
         except Exception as e:
             print(f"Error saving measurements to {output_file}: {e}")
         print(f"Successfully saved measurements to {output_file}")
@@ -216,6 +218,16 @@ if __name__ == "__main__":
     # TODO: Create a separate function that takes the measurements in CSV format
     # and generates plotly plots from them and writes those to disk as well.
     # Define this in a separate module.
+
+    # First, create a dataframe from the original measurements_df that only
+    # contains the _MON_VEL and _MON_CURR_Q columns.
+    processed_df = measurements_df[["_MON_VEL", "_MON_CURR_Q"]]
+    # Next, generate a plotly scatter plot from the processed measurements.
+    fig = plot_measurements(processed_df, "_MON_VEL", "_MON_CURR_Q")
+
+    # Save the plotly figure to a file.
+    output_plot = output_directory / "reaction_wheel_plot.html"
+    fig.write_html(output_plot)
 
     # TODO: Ideally, wrap all this up into a single installable package that you
     # can then just use via the command line.
