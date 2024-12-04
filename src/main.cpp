@@ -116,7 +116,7 @@ void setup() {
   motor.useMonitoring(Serial);
   // Configure which values you want to be monitored using a bitmask.
   motor.monitor_variables = _MON_TARGET | _MON_VOLT_Q  | _MON_VOLT_D | _MON_CURR_Q  | _MON_CURR_D  | _MON_VEL | _MON_ANGLE; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE
-  motor.monitor_downsample = 100; // disable monitor at first - optional
+  motor.monitor_downsample = 1000; // disable monitor at first - optional
 
   // // enable driver
   // driver.enable(); // This should bring pin 8 high == connected to the DRV8313 enable pin.
