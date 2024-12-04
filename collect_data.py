@@ -13,8 +13,7 @@ import threading
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
-
-from plot_data import plot_measurements
+import plotly.express as px
 
 # TODO: Could create two threads:
 # One spins at a provided rate to send commands (I.e., how long each sweep value
@@ -221,9 +220,12 @@ if __name__ == "__main__":
 
     # First, create a dataframe from the original measurements_df that only
     # contains the _MON_VEL and _MON_CURR_Q columns.
-    processed_df = measurements_df[["_MON_VEL", "_MON_CURR_Q"]]
-    # Next, generate a plotly scatter plot from the processed measurements.
-    fig = plot_measurements(processed_df, "_MON_VEL", "_MON_CURR_Q")
+
+    fig = px.scatter(measurements_df, x="_MON_VEL", y="_MON_CURR_Q", title="Reaction Wheel Measurements")
+
+    # processed_df = measurements_df[["_MON_VEL", "_MON_CURR_Q"]]
+    # # Next, generate a plotly scatter plot from the processed measurements.
+    # fig = plot_measurements(processed_df, "_MON_VEL", "_MON_CURR_Q")
 
     # Save the plotly figure to a file.
     output_plot = output_directory / "reaction_wheel_plot.html"
