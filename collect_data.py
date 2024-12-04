@@ -12,6 +12,7 @@ from typing import List
 import threading
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 
 # TODO: Could create two threads:
 # One spins at a provided rate to send commands (I.e., how long each sweep value
@@ -198,12 +199,16 @@ if __name__ == "__main__":
     # Next, write the collected measurements to a CSV file.
     # First, create a CSV file to write the measurements to in the provided
     # output directory.
+    # Define a header row for the CSV file.
+    header = ["_MON_TARGET", "_MON_VOLT_Q", "_MON_VOLT_D", "_MON_CURR_Q", "_MON_CURR_D", "_MON_VEL", "_MON_ANGLE"]
+    # Create a pandas dataframe from the collected measurements.
+    df = pd.DataFrame(collected_measurements, columns=header)
+
+    # Save the dataframe to a CSV file.
     if collected_measurements:
         output_file = output_directory / "reaction_wheel_measurements.csv"
         try:
-            with open(output_file, 'w', newline='') as csvfile:
-                measurement_writer = csv.writer(csvfile)
-                measurement_writer.writerows(collected_measurements)
+            df.to_csv(output_file, index=False)
         except Exception as e:
             print(f"Error saving measurements to {output_file}: {e}")
         print(f"Successfully saved measurements to {output_file}")
