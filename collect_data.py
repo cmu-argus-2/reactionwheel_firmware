@@ -10,6 +10,7 @@ import csv
 from time import sleep
 from typing import List
 import threading
+import numpy as np
 
 # TODO: Could create two threads:
 # One spins at a provided rate to send commands (I.e., how long each sweep value
@@ -53,8 +54,9 @@ def command_angular_speed_sweep(serial_connection:  serial.Serial,
   step_duration_s = step_duration_ms / 1000
   # TODO: Next, create a for loop to loop through all the values in the range
   # that we want to command.
-  for speed in range(start_speed_rad_s, end_speed_rad_s, speed_step_rad_s):
-    serial_connection.write(f"T: {speed}")
+  for speed in np.arange(start_speed_rad_s, end_speed_rad_s, speed_step_rad_s):
+    print(f"Commanding speed: {speed}")
+    serial_connection.write(f"T: {speed}".encode("utf-8"))
     sleep(step_duration_s)
 
   print(f"Angular speed sweep thread completed!")
@@ -110,57 +112,6 @@ def monitor_reaction_wheel(serial_connection: serial.Serial,
                 print(f"Invalid line (could not parse floats): {line}")
 
 
-def read_serial_data(port, baudrate):
-    """
-    Reads and parses lines of floating-point data from a serial port.
-
-    Args:
-        port (str): The serial port to connect to (e.g., 'COM3', '/dev/ttyUSB0').
-        baudrate (int): The baud rate for the serial connection.
-    """
-    try:
-        # Open the serial connection
-        with serial.Serial(port, baudrate, timeout=1) as ser:
-            print(f"Connected to {port} at {baudrate} baud.")
-
-            # TODO: Will use the serial connection we create for both sending
-            # out the commanded sweep values and receiving messages.
-
-            # Create a collection of lines. Could make this a queue and
-            # asynchronously write to disk in another thread later.
-            measurements = []
-            while True:
-                # Read a line from the serial port
-                # TODO: Determine if readline is blocking or not.
-                line = ser.readline().decode('utf-8').strip()
-
-                if line:
-                    try:
-                        # Parse the line into a list of floating-point numbers
-                        values = [float(value) for value in line.split()]
-
-                        # TODO: write a function to filter out values we don't
-                        # care about / should reject.
-
-                        # Ensure the line contains exactly 7 values
-                        if len(values) == 7:
-                            print(f"Received: {values}")
-                            # print(f"Values: {values}")
-                            measurements.append(values)
-                        else:
-                            print(f"Invalid line (wrong number of values): {line}")
-                    except ValueError:
-                        print(f"Invalid line (could not parse floats): {line}")
-
-    except serial.SerialException as e:
-        print(f"Serial error: {e}")
-    except KeyboardInterrupt:
-        print("Program terminated.")
-        # Before exiting, write the collected values to a csv file.
-        with open("hdd-measurements.csv", 'w', newline='') as csvfile:
-            measurement_writer = csv.writer(csvfile)
-            measurement_writer.writerows(measurements)
-
 # Replace with your serial port and baud rate
 if __name__ == "__main__":
 
@@ -195,56 +146,65 @@ if __name__ == "__main__":
     collected_measurements = []
 
     # TODO: Open the specified serial port with the specified baud rate.
-    with serial.Serial(args.port, args.baudrate, timeout=1) as ser:
-        print(f"Connected to {args.port} at {args.baudrate} baud.")
+    try:
+        with serial.Serial(args.port, args.baudrate, timeout=1) as ser:
+            print(f"Connected to {args.port} at {args.baudrate} baud.")
 
-        # Create a commander thread.
-        commander_thread = threading.Thread(target=command_angular_speed_sweep,
-                                            args=(ser, args.start_speed_rad_s, args.end_speed_rad_s,
-                                                  args.speed_step_rad_s, args.step_duration_ms))
+            # Create a commander thread.
+            commander_thread = threading.Thread(target=command_angular_speed_sweep,
+                                                args=(ser, args.start_speed_rad_s, args.end_speed_rad_s,
+                                                    args.speed_step_rad_s, args.step_duration_ms))
 
-        # Create a sentinel variable to tell the monitor thread to stop reading
-        # from the serial port once the commander thread has finished. The main
-        # thread will set this and the monitor thread will check it at each
-        # iteration to figure out if it's time to stop. Not threadsafe but not
-        # critical. threading.Event might be a better choice.
-        commander_done = threading.Event()
+            # Create a sentinel variable to tell the monitor thread to stop reading
+            # from the serial port once the commander thread has finished. The main
+            # thread will set this and the monitor thread will check it at each
+            # iteration to figure out if it's time to stop. Not threadsafe but not
+            # critical. threading.Event might be a better choice.
+            commander_done = threading.Event()
 
-        # Create a monitor thread.
-        monitor_thread = threading.Thread(target=monitor_reaction_wheel,
-                                          args=(ser, line_filter_regex, collected_measurements, commander_done))
+            # Create a monitor thread.
+            monitor_thread = threading.Thread(target=monitor_reaction_wheel,
+                                            args=(ser, line_filter_regex, collected_measurements, commander_done))
 
-        # Start the monitor and commander threads.
-        monitor_thread.start()
-        commander_thread.start()
+            # Start the monitor and commander threads.
+            monitor_thread.start()
+            commander_thread.start()
 
-        # Wait for the commander thread to finish.
-        commander_thread.join()
-        # Set the sentinel variable to tell the monitor thread to stop.
-        commander_done.set()
-        # Wait for the monitor thread to finish.
-        monitor_thread.join()
+            # Wait for the commander thread to finish.
+            commander_thread.join()
+            # Set the sentinel variable to tell the monitor thread to stop.
+            commander_done.set()
+            # Wait for the monitor thread to finish.
+            monitor_thread.join()
 
-        print(f"The commander and monitor threads completed successfully.")
+            print(f"The commander and monitor threads completed successfully.")
+
+    except serial.SerialException as e:
+        print(f"Serial error: {e}")
+        exit(1)
+    except KeyboardInterrupt:
+        print("Program terminated.")
+        exit(1)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        exit(1)
 
     # Next, write the collected measurements to a CSV file.
     # First, create a CSV file to write the measurements to in the provided
     # output directory.
-    output_file = output_directory / "reaction_wheel_measurements.csv"
-    try:
-        with open(output_file, 'w', newline='') as csvfile:
-            measurement_writer = csv.writer(csvfile)
-            measurement_writer.writerows(collected_measurements)
-    except Exception as e:
-        print(f"Error saving measurements to {output_file}: {e}")
-    print(f"Successfully saved measurements to {output_file}")
+    if collected_measurements:
+        output_file = output_directory / "reaction_wheel_measurements.csv"
+        try:
+            with open(output_file, 'w', newline='') as csvfile:
+                measurement_writer = csv.writer(csvfile)
+                measurement_writer.writerows(collected_measurements)
+        except Exception as e:
+            print(f"Error saving measurements to {output_file}: {e}")
+        print(f"Successfully saved measurements to {output_file}")
 
     # TODO: Create a separate function that takes the measurements in CSV format
     # and generates plotly plots from them and writes those to disk as well.
     # Define this in a separate module.
 
-
     # TODO: Ideally, wrap all this up into a single installable package that you
     # can then just use via the command line.
-
-    # read_serial_data(port="COM6", baudrate=115200)
